@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine # Use a specific, stable version of Postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Used by the postgres image itself for initial setup
+    volumes:
+      - pgdata:/var/lib/postgresql/data # Persist database data
+    ports:
+      - "5432:5432" # Optional: Expose DB port to host for local access (e.g., with a GUI tool)
+    healthcheck: # Optional but recommended: Check if the DB is ready
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: . # Build from the Dockerfile in the current directory
+    ports:
+      - "8000:5000" # Map host port 8000 to container port 5000
+    environment:
+      DB_HOST: db # Connect to the 'db' service defined above
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy # Ensure 'db' is healthy before starting 'web'
+    env_file:
+      - ./.env # Load environment variables from the .env file
+
+volumes:
+  pgdata: # Define the volume for database persistence
